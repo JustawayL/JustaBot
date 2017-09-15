@@ -1,0 +1,2 @@
+# JustaBot
+Simple Discord bot
