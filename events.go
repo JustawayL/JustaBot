@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"strconv"
 	"strings"
@@ -11,11 +12,17 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var Turno string
+var T = time.NewTimer(0)
 
 // This function will be called (due to AddHandler above) every time a new
 // message is created on any channel that the autenticated bot has access to.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	//Check if channel is private or DM
+	/*channel, err := s.Channel(m.ChannelID)
+	if err != nil {
+		log.Println(err)
+	}
+	*/
 
 	// Ignore all messages created by the bot itself
 	// This isn't required in this specific example but it's a good practice.
@@ -26,7 +33,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	isLegal := func(parametro *Player, autor *Player, id string) bool {
 		var sf Semaphore
 		aux, err := s.User(id)
-		log.Println("Usuario ", aux == nil)
 		db, err := ConnectDB()
 		if err != nil {
 			log.Println(err)
@@ -46,6 +52,38 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		return true
 	}
+	/*
+		if strings.HasPrefix(strings.ToLower(m.Content), Config.Prefix+"pistas") && channel.Type == 1 {
+			var sf Semaphore
+			var param = strings.Split(m.Content, " ")
+			var lastMsg Message
+			if len(param) == 2 {
+				db, err := ConnectDB()
+				if err != nil {
+					fmt.Println(err)
+				}
+				defer db.Close()
+				// Get all matched records
+				db.Find(&sf, 123456789)
+				db.Last(&lastMsg)
+				if sf.Player == m.Author.ID {
+					pistas := strings.Split(param[1], ",")
+					for i := 0; i < len(pistas); i++ {
+						timer1 := time.NewTimer(time.Second * time.Duration(30))
+						<-timer1.C
+						s.ChannelMessageSend(Config.Channel, "Lanzando pista: "+pistas[i])
+						msg, _ := s.ChannelMessage(Config.Channel, lastMsg.ID)
+						newMsg := strings.Join([]string{msg.Content, "\n", pistas[i]}, "")
+						s.ChannelMessageEdit(Config.Channel, lastMsg.ID, newMsg)
+					}
+					return
+				}
+
+			}
+
+		}
+	*/
+
 	//Check if the channel is right
 	if m.ChannelID != Config.Channel {
 		return
@@ -62,7 +100,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			s.ChannelMessageSend(m.ChannelID, "Ping!")
 		}
 	*/
-	if strings.HasPrefix(m.Content, Config.Prefix+"timer") {
+	if strings.HasPrefix(strings.ToLower(m.Content), Config.Prefix+"timer") {
 		var second = strings.Split(m.Content, " ")
 		if len(second) != 1 {
 			s.ChannelMessageSend(m.ChannelID, "Ok, <@"+m.Author.ID+">, timer por "+second[1]+" minutos!")
@@ -72,14 +110,15 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				log.Printf("%s", err)
 			}
 
-			timer1 := time.NewTimer(time.Minute * time.Duration(n))
-			<-timer1.C
+			T = time.NewTimer(time.Minute * time.Duration(n))
+			<-T.C
 			s.ChannelMessageSend(m.ChannelID, "<@"+m.Author.ID+">, el tiempo ha terminado!")
+			return
 		}
 
 	}
 
-	if strings.HasPrefix(m.Content, Config.Prefix+"punto") {
+	if strings.HasPrefix(strings.ToLower(m.Content), Config.Prefix+"punto") {
 		var autor Player
 		var parametro Player
 		var lastMsg Message
@@ -105,15 +144,18 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			db.Last(&lastMsg)
 			s.ChannelMessageSend(m.ChannelID, "Congrats "+param[1]+", has ganado esta ronda, ahora es tu turno!")
 			s.ChannelMessageUnpin(m.ChannelID, lastMsg.ID)
+			T.Stop()
 			return
 		}
 
 	}
 
-	if strings.HasPrefix(m.Content, Config.Prefix+"turno") {
+	if strings.HasPrefix(strings.ToLower(m.Content), Config.Prefix+"turno") {
 		var sf Semaphore
 		var activo Player
 		var param = strings.Split(m.Content, " ")
+		var autor Player
+		var parametro Player
 		if len(param) == 1 {
 			db, err := ConnectDB()
 			if err != nil {
@@ -131,38 +173,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			s.ChannelMessageSend(m.ChannelID, "No se ha asignado turno")
 
 		}
-
-	}
-
-	if strings.HasPrefix(m.Content, Config.Prefix+"top") {
-		var jugadores []Player
-		var param = strings.Split(m.Content, " ")
-		if len(param) == 1 {
-			db, err := ConnectDB()
-			if err != nil {
-				log.Println(err)
-			}
-			defer db.Close()
-			db.Order("score desc").Find(&jugadores)
-			i := 0
-			msg := " "
-			for ; i < 5; i++ {
-				if i < len(jugadores) {
-					msg = strings.Join([]string{msg, " [", strconv.Itoa(i + 1), "] ", "Jugador: ", jugadores[i].Name, " Puntaje:", strconv.Itoa(jugadores[i].Score), "\n"}, "")
-				}
-
-			}
-			strings.Join([]string{"```", msg, "```"}, "")
-			s.ChannelMessageSend(m.ChannelID, msg)
-			return
-		}
-
-	}
-
-	if strings.HasPrefix(m.Content, Config.Prefix+"pasar") {
-		var autor Player
-		var parametro Player
-		var param = strings.Split(m.Content, " ")
 
 		if len(param) == 2 {
 			//Trim mention to id
@@ -187,7 +197,39 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	}
 
-	if strings.HasPrefix(m.Content, Config.Prefix+"init") {
+	if strings.HasPrefix(strings.ToLower(m.Content), Config.Prefix+"top") {
+		var jugadores []Player
+		var param = strings.Split(m.Content, " ")
+		var autor Player
+		var posAutor int
+		if len(param) == 1 {
+			db, err := ConnectDB()
+			if err != nil {
+				log.Println(err)
+			}
+			defer db.Close()
+			db.Order("score desc").Find(&jugadores)
+			i := 0
+			msg := ""
+			for ; i < len(jugadores); i++ {
+				if i < 5 {
+					msg = strings.Join([]string{msg, "[", strconv.Itoa(i + 1), "] ", "Jugador: ", jugadores[i].Name, " Puntaje: ", strconv.Itoa(jugadores[i].Score), "\n"}, "")
+				}
+				if jugadores[i].ID == m.Author.ID {
+					autor = jugadores[i]
+					posAutor = i + 1
+				}
+
+			}
+			msg = strings.Join([]string{msg, "------------------------------\n", "[", strconv.Itoa(posAutor), "] ", "Jugador: ", autor.Name, " Puntaje: ", strconv.Itoa(autor.Score)}, "")
+			msg = strings.Join([]string{"```", msg, "```"}, "")
+			s.ChannelMessageSend(m.ChannelID, msg)
+			return
+		}
+
+	}
+
+	if strings.HasPrefix(strings.ToLower(m.Content), Config.Prefix+"init") {
 		var sf Semaphore
 
 		db, err := ConnectDB()
@@ -205,7 +247,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 
-	if strings.HasPrefix(m.Content, Config.Prefix+"jugar") {
+	if strings.HasPrefix(strings.ToLower(m.Content), Config.Prefix+"jugar") {
 		var autor Player
 		var param = strings.Split(m.Content, " ")
 		if len(param) == 1 {
@@ -221,9 +263,20 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			} else {
 				db.Create(&Player{ID: m.Author.ID, Name: m.Author.Username})
 				s.ChannelMessageSend(m.ChannelID, "Jugador creado, buena suerte")
+				return
 			}
 		}
 
+	}
+
+	if strings.HasPrefix(strings.ToLower(m.Content), Config.Prefix+"holi") {
+		pm, err := s.UserChannelCreate(m.Author.ID)
+		content, err := ioutil.ReadFile("Comandos.txt")
+		if err != nil {
+			log.Println(err)
+		}
+		msg := string(content[:])
+		s.ChannelMessageSend(pm.ID, msg)
 	}
 
 }

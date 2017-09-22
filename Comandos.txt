@@ -1,0 +1,18 @@
+Comandos JustaBot
+
+Prefijo: ";"
+
+- `jugar`: Permite registrarse para participar en el torneo de siluetas
+- `init`: Inicializa un turno de silueta, pinea la silueta y la elimina cuando se asigna un punto.
+- `turno`: Indica el nombre de la persona quien posee el turno en la ronda actual.
+- `turno <@Usuario>` : Asigna el turno a otro jugador en caso de no poder subir una silueta.
+- `punto <@Usuario>` : Asigna un punto al ganador de la ronda.
+- `top`: muestra los scores en orden descendente.
+- `timer <minutos>` : Herramienta para iniciar un temporizador en minutos.
+
+
+Comandos por mensaje privado
+
+#Coming soon :v
+- `pistas <@param1,@param2,@param3>`: permite automatizar el lanzamiento de pistas, dando una pista cada determinado tiempo. Las pistas deben estar separadas por comas ","
+
