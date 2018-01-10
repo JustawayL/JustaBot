@@ -15,6 +15,9 @@ import (
 var (
 	Token string
 )
+
+const sfid = 123456789
+
 var Config = ServerConf{}
 
 func main() {

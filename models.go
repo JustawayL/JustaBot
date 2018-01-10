@@ -13,9 +13,12 @@ type Server struct {
 	UpdatedAt time.Time
 }
 
-//Server
+//Message
 type Message struct {
 	ID        string `gorm:"primary_key"`
+	URL       string
+	FileName  string
+	Autor     string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -36,11 +39,12 @@ type Player struct {
 	UpdatedAt time.Time
 }
 
-//Config struct that contains needed information for GoGerard
+//ServerConf struct that contains needed information JustaBot
 type ServerConf struct {
-	Token   string
-	Channel string
-	Rol     string
-	Admin   string
-	Prefix  string
+	Token    string
+	Channel  string
+	Rol      string
+	Admin    string
+	FileSize int
+	Prefix   string
 }

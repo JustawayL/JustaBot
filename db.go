@@ -7,6 +7,7 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
+//InitDB initialize the database
 func InitDB() (err error) {
 	db, err := gorm.Open("sqlite3", "SiluetasData.db")
 
